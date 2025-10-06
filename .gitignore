@@ -15,6 +15,7 @@ dist/
 build/
 
 # Jupyter notebooks
+notebooks/
 .ipynb_checkpoints/
 
 # IDE / editor files
