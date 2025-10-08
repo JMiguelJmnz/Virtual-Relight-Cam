@@ -32,3 +32,4 @@ Thumbs.db
 
 # Models
 models/
+models/u2net.onnx
