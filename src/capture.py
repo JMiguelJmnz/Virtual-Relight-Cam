@@ -51,7 +51,7 @@ class CaptureManager:
         return frame_small
 
     def send_frame(self, frame):
-        self.cam.send(frame,  colorspace=pyvirtualcam.ColorSpace.RGBA)
+        self.cam.send(frame)
         self.cam.sleep_until_next_frame()
 
     def release(self):

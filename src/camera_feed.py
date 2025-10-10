@@ -12,7 +12,7 @@ transform = torch.hub.load("intel-isl/MiDaS", "transforms").small_transform
 
 cap = cv2.VideoCapture(0)
 
-with pyvirtualcam.Camera(width=640, height=480, fps=30, name="Virtual Relight Cam") as cam:
+with pyvirtualcam.Camera(width, height, fps, fmt=pyvirtualcam.PixelFormat.BGR) as cam:
     print("Virtual camera started")
 
     while True:
