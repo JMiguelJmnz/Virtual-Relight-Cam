@@ -6,52 +6,67 @@ import threading
 from queue import Queue
 import time
 
-# Queues for threading
-frame_queue = Queue(maxsize=2)
-processed_queue = Queue(maxsize=1)
+class DoubleBuffer:
+    def __init__(self):
+        self.input_buffer = None
+        self.output_buffer = None
+        self.lock_in = threading.Lock()
+        self.lock_out = threading.Lock()
 
-def processing_worker():
+    def set_input(self, frame_small):
+        with self.lock_in:
+            self.input_buffer = frame_small
+    
+    def get_input(self):
+        with self.lock_in:
+            frame_small = self.input_buffer
+            self.input_buffer = None
+            return frame_small
+        
+    def set_output(self, frame_small):
+        with self.lock_out:
+            self.output_buffer = frame_small
+
+    def get_output(self):
+        with self.lock_out:
+            return self.output_buffer
+
+def processing_thread(buffers):
     while True:
-        frame_small = frame_queue.get()
+        frame_small = buffers.get_input()
         if frame_small is None:
-            break
+            time.sleep(0.005)
+            continue
 
         start = time.time()
         processed = remove_background(frame_small)
-        mid = time.time()
         processed = relight_curve(processed)
         end = time.time()
 
-        print(f"[Timing] Background: {mid - start:.2f}s, Relight: {end - mid:.2f}s")
-
-        if processed_queue.full():
-            processed_queue.get_nowait()
-        processed_queue.put(processed)
-        print("[Thread] Frame processed and queued")
-
-threading.Thread(target=processing_worker, daemon=True).start()
-
+        print(f"[Processing] Total: {end - start:.3f}s")
+        buffers.set_output(processed)
 
 def main():
     capture = CaptureManager(downscale=0.5)
+    buffers = DoubleBuffer()
+
+    threading.Thread(target=processing_thread, args=(buffers,), daemon=True).start()
 
     prev_time = time.time()
     frame_count = 0
     fps_display = 0.0
 
     while True:
-   
         frame_small = capture.read_frame()
         if frame_small is None:
             break
 
-        if not frame_queue.full():
-            frame_queue.put(frame_small)
+        buffers.set_input(frame_small)
 
-        if not processed_queue.empty():
-            processed = processed_queue.get()
-            
+        output_frame = buffers.get_output()
 
+        if output_frame is not None:
+            # FPS counter
             frame_count += 1
             now = time.time()
             if frame_count % 10 == 0:
@@ -59,7 +74,7 @@ def main():
                 prev_time = now
 
             cv2.putText(
-                    processed,
+                    output_frame,
                     f"{fps_display:.1f} FPS",
                     (20, 40),
                     cv2.FONT_HERSHEY_SIMPLEX,
@@ -69,9 +84,7 @@ def main():
                     cv2.LINE_AA
                 )
             
-            capture.send_frame(processed)
-
-        print(f"[Queue] Input: {frame_queue.qsize()}, Output: {processed_queue.qsize()}")
+            capture.send_frame(output_frame)
 
         if cv2.waitKey(1) & 0xFF == 27:  # ESC to quit
             break
