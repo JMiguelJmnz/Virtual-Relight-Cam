@@ -1,6 +1,7 @@
 # capture.py
 import cv2
 import pyvirtualcam
+import time
 
 # List of common resolutions (descending order)
 COMMON_RESOLUTIONS = [
@@ -43,16 +44,27 @@ class CaptureManager:
         return 640, 360
 
     def read_frame(self):
+        start_time = time.time()
+
         ret, frame = self.cap.read()
         if not ret:
             return None
         # Downscale for processing
         frame_small = cv2.resize(frame, (self.width, self.height))
+
+        end_time = time.time()
+         # print(f"[Timing] read_frame() took {end_time - start_time:.3f}s")
+        
         return frame_small
 
-    def send_frame(self, frame):
-        self.cam.send(frame)
+    def send_frame(self, frame_small):
+        start_time = time.time()
+        
+        self.cam.send(frame_small)
         self.cam.sleep_until_next_frame()
+
+        end_time = time.time()
+        # print(f"[Timing] send_frame() took {end_time - start_time:.3f}s")
 
     def release(self):
         self.cap.release()
